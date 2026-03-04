@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SODV 2401 — Reviewer</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d0f14;
+    --surface: #161923;
+    --card: #1e2332;
+    --border: #2a3045;
+    --accent: #5bffc8;
+    --accent2: #ff6b6b;
+    --accent3: #ffd166;
+    --text: #e8eaf2;
+    --muted: #6b7394;
+    --correct: #5bffc8;
+    --wrong: #ff6b6b;
+    --radius: 12px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Syne', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── Background grid ── */
+  body::before {
+    content: '';
+    position: fixed; inset: 0;
+    background-image:
+      linear-gradient(rgba(91,255,200,.03) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(91,255,200,.03) 1px, transparent 1px);
+    background-size: 40px 40px;
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .wrapper { position: relative; z-index: 1; max-width: 720px; margin: 0 auto; padding: 24px 16px 80px; }
+
+  /* ── Header ── */
+  header {
+    text-align: center;
+    padding: 40px 0 32px;
+    animation: fadeDown .6s ease both;
+  }
+  .tag {
+    display: inline-block;
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--accent);
+    border: 1px solid var(--accent);
+    padding: 4px 10px;
+    border-radius: 4px;
+    margin-bottom: 14px;
+  }
+  header h1 {
+    font-size: clamp(1.8rem, 5vw, 3rem);
+    font-weight: 800;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+  }
+  header h1 span { color: var(--accent); }
+  header p {
+    margin-top: 10px;
+    color: var(--muted);
+    font-size: .95rem;
+  }
+
+  /* ── Score bar ── */
+  .scorebar {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+    margin: 20px 0 28px;
+    animation: fadeDown .6s .1s ease both;
+  }
+  .scorebar .chip {
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    padding: 6px 14px;
+    border-radius: 999px;
+    border: 1px solid var(--border);
+    background: var(--surface);
+    color: var(--muted);
+  }
+  .scorebar .chip b { color: var(--text); }
+
+  /* ── Progress ── */
+  .progress-wrap {
+    background: var(--surface);
+    border-radius: 999px;
+    height: 6px;
+    margin-bottom: 28px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--accent), #00d4ff);
+    border-radius: 999px;
+    transition: width .5s cubic-bezier(.4,0,.2,1);
+  }
+
+  /* ── Question card ── */
+  .q-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 28px 24px;
+    margin-bottom: 20px;
+    animation: slideUp .4s ease both;
+    position: relative;
+    overflow: hidden;
+  }
+  .q-card::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: linear-gradient(90deg, var(--accent), transparent);
+  }
+  .q-num {
+    font-family: 'Space Mono', monospace;
+    font-size: .7rem;
+    color: var(--accent);
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    margin-bottom: 10px;
+  }
+  .q-topic {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    color: var(--muted);
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    margin-bottom: 14px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .q-topic::before { content: '◈'; color: var(--accent); }
+  .q-text {
+    font-size: 1.05rem;
+    line-height: 1.6;
+    font-weight: 600;
+    margin-bottom: 22px;
+  }
+
+  /* ── Options ── */
+  .options { display: flex; flex-direction: column; gap: 10px; }
+  .opt {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 14px 16px;
+    border-radius: 10px;
+    border: 1.5px solid var(--border);
+    background: var(--surface);
+    cursor: pointer;
+    transition: border-color .2s, background .2s, transform .15s;
+    font-size: .93rem;
+    line-height: 1.5;
+    text-align: left;
+    width: 100%;
+    color: var(--text);
+  }
+  .opt:hover:not(:disabled) {
+    border-color: var(--accent);
+    background: rgba(91,255,200,.05);
+    transform: translateX(4px);
+  }
+  .opt-letter {
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    border-radius: 4px;
+    background: var(--border);
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    transition: background .2s, color .2s;
+  }
+  .opt.correct {
+    border-color: var(--correct);
+    background: rgba(91,255,200,.08);
+  }
+  .opt.correct .opt-letter { background: var(--correct); color: #0d0f14; }
+  .opt.wrong {
+    border-color: var(--wrong);
+    background: rgba(255,107,107,.08);
+  }
+  .opt.wrong .opt-letter { background: var(--wrong); color: #fff; }
+  .opt:disabled { cursor: default; }
+
+  /* ── Explanation ── */
+  .explanation {
+    margin-top: 16px;
+    padding: 14px 16px;
+    background: rgba(91,255,200,.05);
+    border-left: 3px solid var(--accent);
+    border-radius: 0 8px 8px 0;
+    font-size: .87rem;
+    line-height: 1.6;
+    color: #a8b8d0;
+    display: none;
+    animation: fadeDown .3s ease;
+  }
+  .explanation.show { display: block; }
+  .explanation strong { color: var(--accent); }
+
+  /* ── Next button ── */
+  .btn-wrap { display: flex; justify-content: flex-end; margin-top: 18px; }
+  .btn-next {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: .9rem;
+    padding: 12px 28px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #0d0f14;
+    cursor: pointer;
+    display: none;
+    transition: transform .15s, box-shadow .15s;
+    letter-spacing: .04em;
+  }
+  .btn-next:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(91,255,200,.3); }
+  .btn-next.show { display: block; animation: fadeDown .3s ease; }
+
+  /* ── Category filters ── */
+  .filter-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 24px;
+    animation: fadeDown .5s .15s ease both;
+  }
+  .filter-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: .65rem;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    padding: 6px 12px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all .2s;
+  }
+  .filter-btn.active, .filter-btn:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: rgba(91,255,200,.07);
+  }
+
+  /* ── Results screen ── */
+  #results { display: none; animation: slideUp .5s ease; }
+  .result-card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 40px 28px;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .result-card::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at 50% 0%, rgba(91,255,200,.08) 0%, transparent 70%);
+  }
+  .score-big {
+    font-size: clamp(3.5rem, 12vw, 6rem);
+    font-weight: 800;
+    letter-spacing: -.03em;
+    line-height: 1;
+    margin: 16px 0 8px;
+  }
+  .score-big .denom { font-size: 40%; color: var(--muted); }
+  .score-label {
+    font-family: 'Space Mono', monospace;
+    font-size: .75rem;
+    letter-spacing: .15em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 24px;
+  }
+  .result-grade {
+    display: inline-block;
+    font-size: 1.2rem;
+    font-weight: 800;
+    padding: 8px 24px;
+    border-radius: 8px;
+    margin-bottom: 28px;
+  }
+  .grade-a { background: rgba(91,255,200,.15); color: var(--correct); border: 1px solid var(--correct); }
+  .grade-b { background: rgba(255,209,102,.15); color: var(--accent3); border: 1px solid var(--accent3); }
+  .grade-c { background: rgba(255,107,107,.15); color: var(--wrong); border: 1px solid var(--wrong); }
+
+  .breakdown {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin: 24px 0 32px;
+  }
+  .bk-cell {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 16px 8px;
+  }
+  .bk-num {
+    font-size: 1.8rem;
+    font-weight: 800;
+    line-height: 1;
+  }
+  .bk-lbl {
+    font-family: 'Space Mono', monospace;
+    font-size: .6rem;
+    letter-spacing: .1em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 4px;
+  }
+  .bk-cell.c-correct .bk-num { color: var(--correct); }
+  .bk-cell.c-wrong .bk-num { color: var(--wrong); }
+
+  .btn-restart {
+    font-family: 'Syne', sans-serif;
+    font-weight: 700;
+    font-size: 1rem;
+    padding: 14px 36px;
+    border-radius: 8px;
+    border: none;
+    background: var(--accent);
+    color: #0d0f14;
+    cursor: pointer;
+    transition: transform .15s, box-shadow .15s;
+    letter-spacing: .04em;
+    margin: 6px;
+  }
+  .btn-restart:hover { transform: translateY(-2px); box-shadow: 0 8px 24px rgba(91,255,200,.35); }
+  .btn-restart.outline {
+    background: transparent;
+    color: var(--accent);
+    border: 1.5px solid var(--accent);
+  }
+
+  /* ── Animations ── */
+  @keyframes fadeDown { from { opacity:0; transform:translateY(-12px); } to { opacity:1; transform:none; } }
+  @keyframes slideUp  { from { opacity:0; transform:translateY(20px); } to { opacity:1; transform:none; } }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    .q-card { padding: 20px 16px; }
+    .breakdown { grid-template-columns: repeat(3,1fr); gap: 8px; }
+    .bk-num { font-size: 1.4rem; }
+    .filter-row { gap: 6px; }
+    .opt { padding: 12px 12px; font-size: .88rem; }
+  }
+</style>
+</head>
+<body>
+<div class="wrapper">
+
+  <header>
+    <div class="tag">SODV 2401</div>
+    <h1>Algorithms &amp; Data<br><span>Structures</span> Reviewer</h1>
+    <p>Comprehensive MCQ exam prep — all lecture topics</p>
+  </header>
+
+  <!-- Filter -->
+  <div class="filter-row" id="filterRow">
+    <button class="filter-btn active" data-topic="all">All Topics</button>
+    <button class="filter-btn" data-topic="oop">OOP &amp; Classes</button>
+    <button class="filter-btn" data-topic="adt">ADT &amp; Interfaces</button>
+    <button class="filter-btn" data-topic="linked">Linked Lists</button>
+    <button class="filter-btn" data-topic="bigo">Big-O Notation</button>
+  </div>
+
+  <!-- Score chips -->
+  <div class="scorebar" id="scorebar">
+    <div class="chip">Question <b id="qNum">1</b> of <b id="qTotal">—</b></div>
+    <div class="chip">✓ <b id="numCorrect">0</b> Correct</div>
+    <div class="chip">✗ <b id="numWrong">0</b> Wrong</div>
+  </div>
+
+  <!-- Progress -->
+  <div class="progress-wrap"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+  <!-- Quiz area -->
+  <div id="quizArea"></div>
+
+  <!-- Results -->
+  <div id="results">
+    <div class="result-card">
+      <div class="tag">Exam Complete</div>
+      <div class="score-big" id="rScore">0<span class="denom">/0</span></div>
+      <div class="score-label">Final Score</div>
+      <div class="result-grade" id="rGrade">—</div>
+      <div class="breakdown">
+        <div class="bk-cell c-correct"><div class="bk-num" id="rCorrect">0</div><div class="bk-lbl">Correct</div></div>
+        <div class="bk-cell c-wrong"><div class="bk-num" id="rWrong">0</div><div class="bk-lbl">Wrong</div></div>
+        <div class="bk-cell"><div class="bk-num" id="rPct">0%</div><div class="bk-lbl">Accuracy</div></div>
+      </div>
+      <button class="btn-restart" onclick="restart()">Restart Exam</button>
+      <button class="btn-restart outline" onclick="restartFiltered()">Retry Wrong Only</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// ════════════════════════════════════════════
+//  QUESTION BANK
+// ════════════════════════════════════════════
+const ALL_QUESTIONS = [
+
+  // ── OOP & Classes ──
+  { topic:'oop', q:'In Java, what is the key difference between a class and an object?',
+    opts:['A class is stored in RAM; an object is on disk','A class is a blueprint; an object is an instance created at runtime','An object can only be created once','Classes are mutable; objects are immutable'],
+    ans:1, exp:'A class is source-code describing structure and behavior. An object is an actual entity created in memory when the program runs, using the class as a blueprint.' },
+
+  { topic:'oop', q:'Which of the following is NOT one of the four core OOP principles covered in the course?',
+    opts:['Abstraction','Compilation','Encapsulation','Polymorphism'],
+    ans:1, exp:'The four core OOP principles are abstraction, encapsulation, inheritance, and polymorphism. Compilation is a language mechanism, not an OOP principle.' },
+
+  { topic:'oop', q:'A Java class declared with only private fields has how much memory allocated immediately after the class declaration?',
+    opts:['Proportional to number of fields','0 bytes — the class is only a template','4 bytes per field','Depends on the JVM'],
+    ans:1, exp:'A class declaration is just a template. No memory is allocated for instance data until an object is instantiated with the `new` keyword.' },
+
+  { topic:'oop', q:'What does "encapsulation" mean in object-oriented programming?',
+    opts:['Hiding implementation details while exposing a public interface','Inheriting from multiple superclasses','Running the same code on different machines','Optimizing loops for speed'],
+    ans:0, exp:'Encapsulation wraps data members and methods together inside a class and restricts direct access to the internals, exposing only what is necessary via public methods.' },
+
+  { topic:'oop', q:'Which Java keyword is used to create an instance of a class?',
+    opts:['create','instance','new','class'],
+    ans:2, exp:'The `new` keyword allocates memory and invokes the constructor to create an object at runtime.' },
+
+  { topic:'oop', q:'Which component of a Java class defines its "state"?',
+    opts:['Methods','Constructors','Instance variables (fields)','Import statements'],
+    ans:2, exp:'State is described by the values stored in instance variables (fields). Behavior is described by methods.' },
+
+  { topic:'oop', q:'In the course analogy, a "Food Menu" corresponds to which OOP concept?',
+    opts:['Object','Interface','Class','Method'],
+    ans:2, exp:'The food menu is the template/blueprint (class). The real food item actually served is the object created from that class.' },
+
+  { topic:'oop', q:'Static methods in Java belong to:',
+    opts:['Each individual object','The class itself','The superclass only','The JVM'],
+    ans:1, exp:'Static members belong to the class, not to any particular instance. They can be called without creating an object.' },
+
+  // ── ADT & Interfaces ──
+  { topic:'adt', q:'What is an Abstract Data Type (ADT)?',
+    opts:['A concrete implementation using arrays','An encapsulation of data and operations where implementation is hidden','A Java keyword for abstract classes','A loop structure for data processing'],
+    ans:1, exp:'An ADT defines WHAT data is stored and WHAT operations are available, without specifying HOW they are implemented. Users interact only through public methods.' },
+
+  { topic:'adt', q:'Which statement is TRUE about Java interfaces?',
+    opts:['They can contain instance variables','They can contain full method implementations','All their methods are abstract by default','They support multiple inheritance of implementation'],
+    ans:2, exp:'In a traditional Java interface, all methods are abstract (no body). Interfaces cannot contain instance variables or method implementations (pre-Java 8 default methods).' },
+
+  { topic:'adt', q:'How many superclasses can a Java class directly inherit from?',
+    opts:['One','Two','Unlimited','Depends on JDK version'],
+    ans:0, exp:'Java does not support multiple class inheritance. A class can extend only ONE superclass, though it may implement multiple interfaces.' },
+
+  { topic:'adt', q:'Which keyword is used to declare a Java interface?',
+    opts:['abstract','implements','interface','extends'],
+    ans:2, exp:'The `interface` keyword declares an interface. Classes use `implements` to adopt an interface, and interfaces can use `extends` to inherit from other interfaces.' },
+
+  { topic:'adt', q:'A concrete class that implements an interface MUST:',
+    opts:['Extend at least one abstract class','Provide implementations for all interface methods','Declare all fields as static','Call super() in its constructor'],
+    ans:1, exp:'Any concrete (non-abstract) class that implements an interface must provide a method body for every method declared in that interface.' },
+
+  { topic:'adt', q:'What is the relationship between a Data Structure and an ADT?',
+    opts:['They are exactly the same thing','A Data Structure is an implementation of an ADT','An ADT is an implementation of a Data Structure','There is no relationship'],
+    ans:1, exp:'An ADT is the abstract concept (what). A Data Structure is the concrete implementation (how). Multiple data structures can implement the same ADT.' },
+
+  { topic:'adt', q:'An interface in Java can be used as:',
+    opts:['A constructor call target','A type for declaring variables or method parameters','A replacement for all abstract classes','A way to define static blocks'],
+    ans:1, exp:'The compiler treats interfaces as types, so you can declare variables and parameters of an interface type, enabling polymorphism across unrelated classes.' },
+
+  { topic:'adt', q:'Which best describes why interfaces are useful in Java algorithms?',
+    opts:['They allow direct memory access','They let unrelated classes share a common contract processed polymorphically','They replace the need for loops','They compile faster than abstract classes'],
+    ans:1, exp:'Interfaces let diverse, unrelated classes share common method signatures. Code can then work with the interface type, processing any implementor polymorphically.' },
+
+  // ── Linked Lists ──
+  { topic:'linked', q:'What is the primary advantage of a LinkedList over an ArrayList when inserting elements in the middle?',
+    opts:['Linked lists use less total memory','Insertion requires only pointer updates, not shifting all subsequent elements','Linked lists have O(1) random access','Linked lists are faster to traverse'],
+    ans:1, exp:'Inserting into an ArrayList at position i requires shifting all elements from i onward — O(n). A linked list only needs to update two pointers, which is O(1) if you already have the position.' },
+
+  { topic:'linked', q:'Each node in a singly linked list contains:',
+    opts:['Only the data value','Only a pointer to the next node','Data and a pointer to the next node','Data and pointers to both next and previous nodes'],
+    ans:2, exp:'A singly linked list node has two parts: the data member(s) and a `next` pointer that references the following node (or null at the end).' },
+
+  { topic:'linked', q:'What does the `head` pointer of a linked list store?',
+    opts:['The last element','A count of all nodes','A reference to the first node','The maximum value in the list'],
+    ans:2, exp:'`head` points to the first node in the list. If `head == null`, the list is empty.' },
+
+  { topic:'linked', q:'What is the time complexity of appending a node to the END of a singly linked list (without a tail pointer)?',
+    opts:['O(1)','O(log n)','O(n)','O(n²)'],
+    ans:2, exp:'Without a tail pointer, you must traverse all n nodes to find the last one before appending. This is O(n).' },
+
+  { topic:'linked', q:'In the `appendNode` method, the while loop `while (nodePtr.next != null)` is used to:',
+    opts:['Count the number of nodes','Find the node with the largest value','Advance to the last node in the list','Delete duplicate nodes'],
+    ans:2, exp:'The loop walks nodePtr forward until nodePtr.next is null, meaning nodePtr IS the last node. The new node is then linked after it.' },
+
+  { topic:'linked', q:'When deleting a node from a singly linked list, which step is essential to avoid breaking the chain?',
+    opts:['Setting the deleted node\'s value to null','Updating the previous node\'s next pointer to skip the deleted node','Reversing the entire list first','Rebuilding the list from scratch'],
+    ans:1, exp:'The predecessor node\'s `next` must be redirected to the deleted node\'s `next`. Otherwise the rest of the list becomes unreachable.' },
+
+  { topic:'linked', q:'A Doubly Linked List differs from a Singly Linked List because:',
+    opts:['It stores data in sorted order','Each node has two pointers: next AND previous','It uses arrays internally','It cannot be traversed backwards'],
+    ans:1, exp:'A doubly linked list adds a `previous` pointer to each node, enabling traversal in both directions — forward via `next`, backward via `previous`.' },
+
+  { topic:'linked', q:'In a Circular Linked List, what does the last node\'s `next` pointer point to?',
+    opts:['Null','The second node','The head (first node)','A sentinel/dummy node'],
+    ans:2, exp:'In a circular linked list, the tail\'s `next` wraps back around to point to the head, forming a continuous circle with no null termination.' },
+
+  { topic:'linked', q:'Arrays require contiguous memory allocation. What problem does this cause?',
+    opts:['Arrays cannot store integers','Even with available RAM, it may be impossible to allocate a large contiguous block','Arrays grow automatically','Arrays cannot be traversed'],
+    ans:1, exp:'Due to memory fragmentation, a system might have enough total free memory but not a large enough contiguous block, making array allocation fail even when there is "enough" RAM.' },
+
+  { topic:'linked', q:'What is the purpose of `previousNode` in the `insertNode` and `deleteNode` functions?',
+    opts:['To store a backup copy of the data','To keep track of the node before the target so its `next` can be updated','To count how many nodes were visited','To mark nodes for garbage collection'],
+    ans:1, exp:'Since singly linked lists only go forward, you need `previousNode` to know which node\'s `next` pointer must be updated when inserting before or deleting a target node.' },
+
+  { topic:'linked', q:'Which of the following classes in Java is a subclass of AbstractList and implements a linked list internally?',
+    opts:['ArrayList','HashMap','LinkedList','TreeSet'],
+    ans:2, exp:'Java\'s `java.util.LinkedList` is a subclass of AbstractList that implements the List interface using a doubly-linked list internally.' },
+
+  // ── Big-O Notation ──
+  { topic:'bigo', q:'What does Big-O notation primarily describe?',
+    opts:['The exact number of operations an algorithm performs','How an algorithm\'s time or space requirements grow as input size increases','The amount of RAM a program uses','The number of bugs in a program'],
+    ans:1, exp:'Big-O describes the asymptotic growth rate of an algorithm\'s resource consumption (time or space) as a function of input size n, ignoring constant factors.' },
+
+  { topic:'bigo', q:'What is the Big-O complexity of a single for-loop that iterates through all n elements?',
+    opts:['O(1)','O(log n)','O(n)','O(n²)'],
+    ans:2, exp:'A single loop over all n elements performs a linear number of operations proportional to n, so it is O(n) — linear time.' },
+
+  { topic:'bigo', q:'Two nested for-loops each iterating n times gives which time complexity?',
+    opts:['O(2n)','O(n log n)','O(n²)','O(n³)'],
+    ans:2, exp:'Each of the outer n iterations causes n inner iterations, yielding n×n = n² operations total — quadratic time O(n²).' },
+
+  { topic:'bigo', q:'A loop that doubles its counter each iteration (`i *= 2`) runs in:',
+    opts:['O(n)','O(log n)','O(n²)','O(1)'],
+    ans:1, exp:'Doubling i each iteration means the loop body executes log₂(n) times — the number of times you can halve n before reaching 1. This is O(log n).' },
+
+  { topic:'bigo', q:'Which growth rate is the MOST efficient (smallest) for large n?',
+    opts:['O(n²)','O(n log n)','O(log n)','O(n)'],
+    ans:2, exp:'O(log n) < O(n) < O(n log n) < O(n²). Logarithmic algorithms grow very slowly and are the most efficient among the listed options.' },
+
+  { topic:'bigo', q:'When analyzing Big-O, why do we drop constant factors (e.g., treat 100n as O(n))?',
+    opts:['Because constants are always zero','Because for large n, the growth rate dominates; constants don\'t change the fundamental scaling behavior','Because Java computes constants at compile time','Because constants cause overflow'],
+    ans:1, exp:'Big-O captures the fundamental scaling behavior. As n → ∞, constants become insignificant compared to how the dominant term grows. 100n and n both scale linearly.' },
+
+  { topic:'bigo', q:'What is the Big-O complexity of ArrayList\'s `get(index)` operation?',
+    opts:['O(n)','O(log n)','O(1)','O(n²)'],
+    ans:2, exp:'ArrayList uses a backing array with direct index access. Retrieving any element by index is a single memory lookup — constant time O(1) regardless of list size.' },
+
+  { topic:'bigo', q:'What is the worst-case Big-O for inserting into the MIDDLE of an ArrayList?',
+    opts:['O(1)','O(log n)','O(n)','O(n log n)'],
+    ans:2, exp:'Inserting in the middle requires shifting all subsequent elements one position right. In the worst case (insert at index 0), all n elements shift — O(n).' },
+
+  { topic:'bigo', q:'An algorithm with 2ⁿ complexity is classified as:',
+    opts:['Linear','Polynomial','Exponential','Logarithmic'],
+    ans:2, exp:'2ⁿ grows exponentially. Such algorithms quickly become infeasible for even moderately large n (e.g., n=50 yields over 10¹⁵ operations).' },
+
+  { topic:'bigo', q:'Which type of algorithm analysis considers the MAXIMUM time over all possible inputs of size n?',
+    opts:['Best-case analysis','Average-case analysis','Worst-case analysis','Amortized analysis'],
+    ans:2, exp:'Worst-case analysis gives an upper bound guarantee. T(n) = maximum running time on any input of size n. This is the most commonly used measure.' },
+
+  { topic:'bigo', q:'In Big-O analysis, which term dominates for large n in the expression 5n³ + 100n² + 1000?',
+    opts:['1000','100n²','5n³','All terms equally'],
+    ans:2, exp:'For large n, the highest-degree term dominates all lower-degree terms. 5n³ grows much faster than 100n² or 1000, so the expression is O(n³).' },
+
+  { topic:'bigo', q:'The linear search algorithm has which time complexity in the worst case?',
+    opts:['O(1)','O(log n)','O(n)','O(n²)'],
+    ans:2, exp:'In the worst case (target not found or at the last position), linear search examines all n elements, making it O(n).' },
+
+];
+
+// ════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════
+let questions = [];
+let current = 0;
+let score = 0;
+let wrong = 0;
+let answered = false;
+let wrongIds = [];
+let activeTopic = 'all';
+
+function shuffle(arr) {
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
+
+function loadQuestions(topic) {
+  const pool = topic === 'all' ? ALL_QUESTIONS : ALL_QUESTIONS.filter(q => q.topic === topic);
+  questions = shuffle([...pool]);
+}
+
+function updateScoreBar() {
+  document.getElementById('qNum').textContent = current + 1;
+  document.getElementById('qTotal').textContent = questions.length;
+  document.getElementById('numCorrect').textContent = score;
+  document.getElementById('numWrong').textContent = wrong;
+  const pct = questions.length ? ((current) / questions.length * 100) : 0;
+  document.getElementById('progressFill').style.width = pct + '%';
+}
+
+const LETTERS = ['A','B','C','D'];
+const TOPICS_LABEL = { oop:'OOP & Classes', adt:'ADT & Interfaces', linked:'Linked Lists', bigo:'Big-O Notation' };
+
+function renderQuestion() {
+  answered = false;
+  const qa = document.getElementById('quizArea');
+  qa.innerHTML = '';
+
+  if (current >= questions.length) {
+    showResults();
+    return;
+  }
+
+  updateScoreBar();
+  const q = questions[current];
+
+  const card = document.createElement('div');
+  card.className = 'q-card';
+  card.innerHTML = `
+    <div class="q-num">Question ${current + 1} / ${questions.length}</div>
+    <div class="q-topic">${TOPICS_LABEL[q.topic] || q.topic}</div>
+    <div class="q-text">${q.q}</div>
+    <div class="options" id="opts"></div>
+    <div class="explanation" id="exp"><strong>Explanation:</strong> ${q.exp}</div>
+    <div class="btn-wrap"><button class="btn-next" id="btnNext" onclick="next()">Next →</button></div>
+  `;
+  qa.appendChild(card);
+
+  const optsEl = document.getElementById('opts');
+  q.opts.forEach((opt, i) => {
+    const btn = document.createElement('button');
+    btn.className = 'opt';
+    btn.innerHTML = `<span class="opt-letter">${LETTERS[i]}</span><span>${opt}</span>`;
+    btn.onclick = () => checkAnswer(i, q.ans, i);
+    optsEl.appendChild(btn);
+  });
+}
+
+function checkAnswer(chosen, correct, idx) {
+  if (answered) return;
+  answered = true;
+
+  const opts = document.querySelectorAll('.opt');
+  opts.forEach((btn, i) => {
+    btn.disabled = true;
+    if (i === correct) btn.classList.add('correct');
+    else if (i === chosen) btn.classList.add('wrong');
+  });
+
+  if (chosen === correct) {
+    score++;
+  } else {
+    wrong++;
+    wrongIds.push(questions[current]);
+  }
+
+  document.getElementById('numCorrect').textContent = score;
+  document.getElementById('numWrong').textContent = wrong;
+  document.getElementById('exp').classList.add('show');
+  document.getElementById('btnNext').classList.add('show');
+}
+
+function next() {
+  current++;
+  if (current >= questions.length) {
+    showResults();
+  } else {
+    renderQuestion();
+  }
+}
+
+function showResults() {
+  document.getElementById('quizArea').innerHTML = '';
+  document.getElementById('scorebar').style.display = 'none';
+  document.getElementById('progressFill').style.width = '100%';
+
+  const total = questions.length;
+  const pct = Math.round((score / total) * 100);
+  let grade, gClass;
+  if (pct >= 80) { grade = '🏆 Excellent!'; gClass = 'grade-a'; }
+  else if (pct >= 60) { grade = '📘 Good Effort'; gClass = 'grade-b'; }
+  else { grade = '📖 Keep Studying'; gClass = 'grade-c'; }
+
+  document.getElementById('rScore').innerHTML = `${score}<span class="denom">/${total}</span>`;
+  document.getElementById('rGrade').textContent = grade;
+  document.getElementById('rGrade').className = `result-grade ${gClass}`;
+  document.getElementById('rCorrect').textContent = score;
+  document.getElementById('rWrong').textContent = wrong;
+  document.getElementById('rPct').textContent = pct + '%';
+
+  document.getElementById('results').style.display = 'block';
+
+  const retry = document.querySelector('.btn-restart.outline');
+  retry.style.display = wrongIds.length ? 'inline-block' : 'none';
+}
+
+function restart() {
+  score = 0; wrong = 0; current = 0; wrongIds = [];
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('scorebar').style.display = '';
+  loadQuestions(activeTopic);
+  renderQuestion();
+}
+
+function restartFiltered() {
+  score = 0; wrong = 0; current = 0;
+  const pool = [...wrongIds];
+  wrongIds = [];
+  questions = shuffle(pool);
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('scorebar').style.display = '';
+  renderQuestion();
+}
+
+// ── Filter buttons ──
+document.getElementById('filterRow').addEventListener('click', e => {
+  const btn = e.target.closest('.filter-btn');
+  if (!btn) return;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  activeTopic = btn.dataset.topic;
+  score = 0; wrong = 0; current = 0; wrongIds = [];
+  document.getElementById('results').style.display = 'none';
+  document.getElementById('scorebar').style.display = '';
+  loadQuestions(activeTopic);
+  renderQuestion();
+});
+
+// ── Init ──
+loadQuestions('all');
+renderQuestion();
+</script>
+</body>
+</html>
